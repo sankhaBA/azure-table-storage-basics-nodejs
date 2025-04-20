@@ -3,13 +3,17 @@ const tableClient = require("./azureTableService");
 const args = process.argv.slice(2);
 const command = args[0];
 
-const addEntity = async (name, age) => {
+const addEntity = async (userId, actionType, status, ipAddress, userAgent, timestamp) => {
   try {
     const entity = {
-      partitionKey: "users",
-      rowKey: Date.now().toString(),
-      name,
-      age: parseInt(age, 10),
+      partitionKey: `auth-${timestamp.slice(0, 6)}`,
+      rowKey: timestamp.replace(/[:\-]/g, "") + "Z", 
+      userId,
+      actionType,
+      status,
+      ipAddress,
+      userAgent,
+      timestamp,
     };
     await tableClient.createEntity(entity);
     console.log("Entity added:", entity);
@@ -31,13 +35,17 @@ const listEntities = async () => {
   }
 };
 
-const editEntity = async (rowKey, name, age) => {
+const editEntity = async (rowKey, partitionKey, userId, actionType, status, ipAddress, userAgent, timestamp) => {
   try {
     const updatedEntity = {
-      partitionKey: "users",
+      partitionKey,
       rowKey,
-      name,
-      age: parseInt(age, 10),
+      userId,
+      actionType,
+      status,
+      ipAddress,
+      userAgent,
+      timestamp,
     };
     await tableClient.updateEntity(updatedEntity, "Replace");
     console.log("Entity updated:", updatedEntity);
@@ -46,10 +54,10 @@ const editEntity = async (rowKey, name, age) => {
   }
 };
 
-const deleteEntity = async (rowKey) => {
+const deleteEntity = async (partitionKey, rowKey) => {
   try {
-    await tableClient.deleteEntity("users", rowKey);
-    console.log(`Entity with RowKey "${rowKey}" deleted.`);
+    await tableClient.deleteEntity(partitionKey, rowKey);
+    console.log(`Entity with PartitionKey "${partitionKey}" and RowKey "${rowKey}" deleted.`);
   } catch (error) {
     console.error("Error deleting entity:", error.message);
   }
@@ -57,40 +65,40 @@ const deleteEntity = async (rowKey) => {
 
 const showUsage = () => {
   console.log("Invalid command. Use:");
-  console.log("   node index.js add <name> <age>");
+  console.log("   node index.js add <userId> <actionType> <status> <ipAddress> <userAgent> <timestamp>");
   console.log("   node index.js list");
-  console.log("   node index.js edit <rowKey> <name> <age>");
-  console.log("   node index.js delete <rowKey>");
+  console.log("   node index.js edit <rowKey> <partitionKey> <userId> <actionType> <status> <ipAddress> <userAgent> <timestamp>");
+  console.log("   node index.js delete <partitionKey> <rowKey>");
 };
 
 (async () => {
   try {
     switch (command) {
       case "add": {
-        const [name, age] = args.slice(1);
-        if (!name || !age) {
-          return console.error("Usage: node index.js add <name> <age>");
+        const [userId, actionType, status, ipAddress, userAgent, timestamp] = args.slice(1);
+        if (!userId || !actionType || !status || !ipAddress || !userAgent || !timestamp) {
+          return console.error("Usage: node index.js add <userId> <actionType> <status> <ipAddress> <userAgent> <timestamp>");
         }
-        await addEntity(name, age);
+        await addEntity(userId, actionType, status, ipAddress, userAgent, timestamp);
         break;
       }
       case "list":
         await listEntities();
         break;
       case "edit": {
-        const [rowKey, name, age] = args.slice(1);
-        if (!rowKey || !name || !age) {
-          return console.error("Usage: node index.js edit <rowKey> <name> <age>");
+        const [rowKey, partitionKey, userId, actionType, status, ipAddress, userAgent, timestamp] = args.slice(1);
+        if (!rowKey || !partitionKey || !userId || !actionType || !status || !ipAddress || !userAgent || !timestamp) {
+          return console.error("Usage: node index.js edit <rowKey> <partitionKey> <userId> <actionType> <status> <ipAddress> <userAgent> <timestamp>");
         }
-        await editEntity(rowKey, name, age);
+        await editEntity(rowKey, partitionKey, userId, actionType, status, ipAddress, userAgent, timestamp);
         break;
       }
       case "delete": {
-        const [rowKey] = args.slice(1);
-        if (!rowKey) {
-          return console.error("Usage: node index.js delete <rowKey>");
+        const [partitionKey, rowKey] = args.slice(1);
+        if (!partitionKey || !rowKey) {
+          return console.error("Usage: node index.js delete <partitionKey> <rowKey>");
         }
-        await deleteEntity(rowKey);
+        await deleteEntity(partitionKey, rowKey);
         break;
       }
       default:
